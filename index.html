@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>WeeklyOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800;900&family=Barlow:wght@300;400;500;600&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:      #0d0d0d;
+  --panel:   #141414;
+  --card:    #1a1a1a;
+  --border:  #242424;
+  --border2: #2e2e2e;
+  --gym:     #e8ff47;
+  --school:  #47c8ff;
+  --chores:  #ff6b35;
+  --relax:   #b47aff;
+  --text:    #f0f0f0;
+  --dim:     #777;
+  --dimmer:  #3a3a3a;
+  --nav-h:   64px;
+  --top-h:   56px;
+}
+
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html { height: 100%; }
+
+body {
+  height: 100%; width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ── SHELL ── */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  height: 100vh; /* fallback */
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: var(--top-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wordmark {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 1.55rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  user-select: none;
+}
+.wordmark em { font-style: normal; color: var(--gym); }
+.hdr-right {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.58rem;
+  color: var(--dim);
+  text-align: right;
+  line-height: 1.7;
+}
+.hdr-right strong { color: var(--text); font-size: 0.66rem; display: block; }
+
+/* ── WEEK PROGRESS ── */
+.week-bar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wb-lbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wb-track { flex:1; height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.wb-fill  { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--gym),var(--school)); transition:width .5s cubic-bezier(.4,0,.2,1); width:0%; }
+.wb-pct   { font-family:'Courier Prime',monospace; font-size:0.64rem; color:var(--text); min-width:32px; text-align:right; }
+
+/* ── PAGES ── */
+.page { display:none; flex-direction:column; flex:1; overflow:hidden; }
+.page.active { display:flex; }
+
+/* ── DAY CHIP SCROLLER ── */
+.chip-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.chip-row::-webkit-scrollbar { display:none; }
+
+.chip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 16px;
+  border: 1.5px solid var(--border2);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.chip:active { transform: scale(0.94); }
+.chip-lbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.chip-pip {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--school);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.chip.has-prog .chip-pip { opacity: 1; }
+.chip.active { border-color: var(--gym); background: rgba(232,255,71,0.07); color: var(--gym); }
+.chip.weekend.active { border-color: var(--relax); background: rgba(180,122,255,0.07); color: var(--relax); }
+
+/* ── SCROLL AREA ── */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 12px 14px 16px;
+}
+
+/* ── DAY VIEWS ── */
+.dv { display:none; }
+.dv.active { display:block; animation: fadeUp 0.17s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+
+.day-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.day-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 1.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.day-name span { font-weight: 300; color: var(--dim); font-size: 1.15rem; }
+.day-sub {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.57rem;
+  color: var(--dim);
+  margin-top: 3px;
+}
+.day-hdr-r { display:flex; align-items:center; gap:8px; }
+.ring-svg  { width:44px; height:44px; }
+.ring-bg   { fill:none; stroke:var(--border2); stroke-width:3.2; }
+.ring-fill { fill:none; stroke-width:3.2; stroke-linecap:round; transition:stroke-dashoffset .5s ease; transform:rotate(-90deg); transform-origin:50% 50%; }
+.ring-txt  { font-family:'Barlow Condensed',sans-serif; font-size:9.5px; font-weight:900; fill:var(--text); text-anchor:middle; dominant-baseline:middle; }
+
+.reset-btn {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.54rem;
+  color: var(--dimmer);
+  background: transparent;
+  border: 1px solid var(--border2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
+  min-height: 34px;
+}
+.reset-btn:active { color: var(--chores); border-color: var(--chores); }
+
+/* ── SECTION CARDS ── */
+.sec {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.sec-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 11px;
+  cursor: pointer;
+  user-select: none;
+}
+.sec-hdr:active { background: rgba(255,255,255,0.03); }
+.sec-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+.sec-lbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.sec-mini { width:44px; height:2px; background:var(--border2); border-radius:1px; overflow:hidden; }
+.sec-mini-f { height:100%; border-radius:1px; transition:width .3s ease; }
+.sec-ct { font-family:'Courier Prime',monospace; font-size:0.6rem; color:var(--dim); min-width:26px; text-align:right; }
+.sec-arr { color:var(--dimmer); font-size:0.55rem; transition:transform .2s; margin-left:2px; }
+.sec.col .sec-arr { transform:rotate(-90deg); }
+.sec.col .sec-body { display:none; }
+.sec-body { border-top:1px solid var(--border); }
+
+/* ── TASKS ── */
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  min-height: 52px;
+  user-select: none;
+}
+.task:last-of-type { border-bottom:none; }
+.task:active { background: rgba(255,255,255,0.03); }
+.task.done { background: rgba(34,197,94,0.04); }
+.task.done .task-txt { text-decoration:line-through; color:var(--dimmer); }
+
+.chk {
+  width:20px; height:20px;
+  border:1.5px solid var(--border2);
+  border-radius:5px;
+  flex-shrink:0;
+  margin-top:1px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.7rem; font-weight:700;
+  transition:all .15s;
+}
+.task.done .chk { background:#22c55e; border-color:#22c55e; color:#000; }
+
+.task-body { flex:1; min-width:0; }
+.task-txt  { font-size:0.9rem; line-height:1.4; color:var(--text); }
+.task-time { font-family:'Courier Prime',monospace; font-size:0.58rem; color:var(--dim); margin-top:2px; }
+
+/* ── ADD ROW ── */
+.add-row { display:flex; border-top:1px solid var(--border); }
+.add-inp {
+  flex:1; background:transparent; border:none; outline:none;
+  color:var(--text); font-family:'Barlow',sans-serif;
+  font-size:0.88rem; padding:13px 14px; min-height:52px;
+}
+.add-inp::placeholder { color:var(--dimmer); font-size:0.82rem; }
+.add-go {
+  background:transparent; border:none;
+  border-left:1px solid var(--border);
+  color:var(--dimmer);
+  font-family:'Barlow Condensed',sans-serif; font-weight:700;
+  font-size:0.68rem; letter-spacing:0.1em;
+  padding:13px 14px; cursor:pointer;
+  text-transform:uppercase; min-height:52px; min-width:58px;
+  transition:all .15s;
+}
+.add-go:active { color:var(--gym); background:rgba(232,255,71,0.06); }
+
+/* ── NOTES ── */
+.notes-wrap { padding:10px 14px 14px; border-top:1px solid var(--border); }
+.notes-lbl  { font-family:'Courier Prime',monospace; font-size:0.55rem; color:var(--dimmer); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; }
+.notes-ta   { width:100%; background:transparent; border:none; outline:none; resize:none; color:var(--dim); font-family:'Courier Prime',monospace; font-size:0.78rem; line-height:1.75; min-height:66px; }
+.notes-ta::placeholder { color:var(--dimmer); }
+
+/* ── CATS PAGE ── */
+.cats-hdr { margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.page-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:1.55rem; text-transform:uppercase; letter-spacing:.06em; }
+.pill-row { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:14px; }
+.pill {
+  font-family:'Barlow Condensed',sans-serif; font-weight:700;
+  font-size:0.68rem; letter-spacing:.1em; text-transform:uppercase;
+  padding:6px 14px; border-radius:20px; border:1.5px solid;
+  cursor:pointer; transition:all .15s; opacity:.4; user-select:none;
+}
+.pill.active { opacity:1; }
+.pill:active { transform:scale(0.94); }
+.wk-day-lbl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:0.6rem; letter-spacing:.14em; color:var(--dim); text-transform:uppercase; padding:8px 0 4px; }
+
+/* ── STATS PAGE ── */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 14px; }
+.stat-val  { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:2.3rem; line-height:1; margin-bottom:3px; }
+.stat-lbl  { font-family:'Courier Prime',monospace; font-size:0.57rem; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; }
+.day-row   { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+.day-row-n { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:0.78rem; letter-spacing:.1em; text-transform:uppercase; width:34px; flex-shrink:0; }
+.day-bar   { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.day-bar-f { height:100%; border-radius:2px; transition:width .5s ease; }
+.day-row-n2{ font-family:'Courier Prime',monospace; font-size:0.6rem; color:var(--dim); min-width:40px; text-align:right; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  flex-shrink: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  height: var(--nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nb {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; background:transparent; border:none; cursor:pointer;
+  color:var(--dimmer); transition:all .15s; user-select:none;
+}
+.nb:active { background:rgba(255,255,255,0.04); }
+.nb.active { color:var(--text); }
+.nb-icon { font-size:1.15rem; line-height:1; }
+.nb-lbl  { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:0.57rem; letter-spacing:.1em; text-transform:uppercase; }
+.nb.active .nb-lbl { color:var(--gym); }
+
+/* ── SWIPE TO DELETE ── */
+.task-wrap {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.task-wrap:last-of-type { border-bottom: none; }
+.task-wrap .task { border-bottom: none; }
+
+.delete-bg {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: #ef4444;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.task-wrap.swiped .delete-bg { opacity: 1; pointer-events: auto; }
+.task-wrap.swiped .task { transform: translateX(-80px); }
+.task { transition: transform 0.2s ease; }
+
+/* ── CUSTOM CATEGORY ── */
+.add-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1.5px dashed var(--border2);
+  border-radius: 12px;
+  color: var(--dim);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 4px;
+  transition: all 0.15s;
+}
+.add-cat-btn:active { border-color: var(--gym); color: var(--gym); background: rgba(232,255,71,0.04); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 500;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px 32px;
+  width: 100%; max-width: 480px;
+  animation: slideUp2 0.2s ease;
+}
+@keyframes slideUp2 { from{transform:translateY(40px)} to{transform:translateY(0)} }
+.modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900; font-size: 1.2rem;
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 16px;
+}
+.modal-inp {
+  width: 100%; background: var(--card);
+  border: 1px solid var(--border2); border-radius: 8px;
+  color: var(--text); font-family: 'Barlow', sans-serif;
+  font-size: 0.95rem; padding: 12px 14px;
+  outline: none; margin-bottom: 14px;
+}
+.modal-inp::placeholder { color: var(--dimmer); }
+.modal-inp:focus { border-color: var(--dim); }
+.color-row {
+  display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.color-swatch {
+  width: 32px; height: 32px; border-radius: 8px;
+  cursor: pointer; border: 2px solid transparent;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.color-swatch.active { border-color: #fff; transform: scale(1.15); }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btn {
+  flex: 1; padding: 13px; border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 0.82rem;
+  letter-spacing: .1em; text-transform: uppercase;
+  cursor: pointer; border: none; transition: all 0.15s;
+  min-height: 48px;
+}
+.modal-btn.cancel { background: var(--border2); color: var(--dim); }
+.modal-btn.confirm { background: var(--gym); color: #000; }
+.modal-btn:active { opacity: 0.8; }
+
+/* ── ANDROID RIPPLE ── */
+@keyframes ripple { to { transform:scale(4); opacity:0; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="wordmark">WEEKLY<em>OPS</em></div>
+    <div class="hdr-right">
+      <strong id="hdr-date"></strong>
+      <span id="hdr-tag"></span>
+    </div>
+  </div>
+
+  <!-- WEEK PROGRESS -->
+  <div class="week-bar">
+    <span class="wb-lbl">WEEK</span>
+    <div class="wb-track"><div class="wb-fill" id="wb-fill"></div></div>
+    <span class="wb-pct" id="wb-pct">0%</span>
+  </div>
+
+  <!-- PAGE: TODAY -->
+  <div class="page active" id="pg-today">
+    <div class="chip-row" id="chip-row"></div>
+    <div class="scroll-area" id="day-panels"></div>
+  </div>
+
+  <!-- PAGE: CATEGORIES -->
+  <div class="page" id="pg-cats">
+    <div class="scroll-area">
+      <div class="cats-hdr"><div class="page-title">CATEGORIES</div></div>
+      <div class="pill-row" id="pill-row"></div>
+      <div id="cat-list"></div>
+    </div>
+  </div>
+
+  <!-- PAGE: STATS -->
+  <div class="page" id="pg-stats">
+    <div class="scroll-area">
+      <div class="cats-hdr"><div class="page-title">STATS</div></div>
+      <div class="stat-grid" id="stat-grid"></div>
+      <div style="font-family:'Courier Prime',monospace;font-size:0.57rem;color:var(--dimmer);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">// per day</div>
+      <div id="day-stat-rows"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nb active" id="nb-today" onclick="goPage('today')">
+      <span class="nb-icon">📅</span><span class="nb-lbl">Today</span>
+    </button>
+    <button class="nb" id="nb-cats" onclick="goPage('cats')">
+      <span class="nb-icon">🗂️</span><span class="nb-lbl">Categories</span>
+    </button>
+    <button class="nb" id="nb-stats" onclick="goPage('stats')">
+      <span class="nb-icon">📊</span><span class="nb-lbl">Stats</span>
+    </button>
+  </nav>
+
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DAYS = [
+  {id:'mon',label:'MON',sub:'Weekday',weekend:false},
+  {id:'tue',label:'TUE',sub:'Weekday',weekend:false},
+  {id:'wed',label:'WED',sub:'Weekday',weekend:false},
+  {id:'thu',label:'THU',sub:'Weekday',weekend:false},
+  {id:'fri',label:'FRI',sub:'Weekday',weekend:false},
+  {id:'sat',label:'SAT',sub:'Weekend',weekend:true},
+  {id:'sun',label:'SUN',sub:'Reset Day',weekend:true},
+];
+
+const CHORES = {
+  mon:'Laundry — start + switch',
+  tue:'Vacuum main areas',
+  wed:'Wipe counters, stovetop, sink',
+  thu:'Fold laundry / bathroom wipe-down',
+  fri:'Trash out, quick floor sweep',
+};
+
+const DEFAULTS = {
+  mon:{
+    gym:    [{text:'Lift session',time:'5:30–6:30 PM'}],
+    school: [{text:'WGU coursework block (1–1.5 hrs)',time:'7:00 PM'},{text:'Review notes / practice problems',time:'8:00 PM'}],
+    chores: [{text:CHORES.mon,time:'8:30 PM'}],
+    relax:  [{text:'Protected relax — gaming, Pokémon, hobby',time:'9:00–10:30 PM'},{text:'Wind-down, off screens',time:'10:30 PM'}],
+  },
+  tue:{
+    gym:    [{text:'Lift session',time:'5:30–6:30 PM'}],
+    school: [{text:'WGU coursework block (1–1.5 hrs)',time:'7:00 PM'},{text:'Assignment or project work',time:'8:00 PM'}],
+    chores: [{text:CHORES.tue,time:'8:30 PM'}],
+    relax:  [{text:'Protected relax — gaming, Pokémon, hobby',time:'9:00–10:30 PM'},{text:'Wind-down, off screens',time:'10:30 PM'}],
+  },
+  wed:{
+    gym:    [{text:'Rest day — walk or dry fire practice',time:'5:30–6:30 PM'}],
+    school: [{text:'WGU coursework block (1–1.5 hrs)',time:'7:00 PM'},{text:'Coding practice / side project',time:'8:00 PM'}],
+    chores: [{text:CHORES.wed,time:'8:30 PM'}],
+    relax:  [{text:'Protected relax — mid-week chill',time:'9:00–10:30 PM'},{text:'Wind-down, off screens',time:'10:30 PM'}],
+  },
+  thu:{
+    gym:    [{text:'Lift session',time:'5:30–6:30 PM'}],
+    school: [{text:'WGU coursework block (1–1.5 hrs)',time:'7:00 PM'},{text:'Review week progress / OA prep',time:'8:00 PM'}],
+    chores: [{text:CHORES.thu,time:'8:30 PM'}],
+    relax:  [{text:'Protected relax — call Amber or family',time:'9:00–10:30 PM'},{text:'Wind-down, off screens',time:'10:30 PM'}],
+  },
+  fri:{
+    gym:    [{text:'Lift or active recovery',time:'5:30–6:30 PM'}],
+    school: [{text:'Light review or skip — optional',time:'7:00 PM'}],
+    chores: [{text:CHORES.fri,time:'8:30 PM'}],
+    relax:  [{text:'Friday night FULLY OFF — Blackstone, gaming, chill',time:'7:30 PM'},{text:'No hard bedtime tonight',time:'11:30 PM'}],
+  },
+  sat:{
+    gym:    [{text:'Optional — hike, run, or outdoor activity',time:'Morning'}],
+    school: [{text:'WGU focused session (2 hrs — heaviest school day)',time:'12:00–2:00 PM'},{text:'Magazine (DB) / creative / photography time',time:'2:00–4:00 PM'}],
+    chores: [{text:'Deep clean bathroom(s)',time:'10:00 AM'},{text:'Laundry full cycle',time:'Morning'},{text:'Vacuum + mop all floors',time:'Morning'},{text:'Grocery run',time:'Afternoon'},{text:'Wipe down surfaces / dust',time:'Afternoon'}],
+    relax:  [{text:'Completely free — Amber, gaming, cooking',time:'4:00 PM onward'}],
+  },
+  sun:{
+    gym:    [{text:'Full rest — no gym today',time:'—'}],
+    school: [{text:'Light review or skip if you need the rest',time:'1:00–2:00 PM'}],
+    chores: [{text:'Meal prep for the week',time:'11:00 AM–1:00 PM'},{text:'Home reset — dishes, surfaces, Roomba',time:'2:00–3:00 PM'}],
+    relax:  [{text:'Full unstructured morning — no alarm, slow coffee',time:'Morning'},{text:'Afternoon free time — hobby or nothing',time:'3:00 PM'},{text:'15-min week preview — calendar + 3 priorities',time:'8:00 PM'},{text:'Early wind-down, set up the week right',time:'9:30 PM'}],
+  },
+};
+
+const BASE_CATS = ['gym','school','chores','relax'];
+const CCOL  = {gym:'var(--gym)',school:'var(--school)',chores:'var(--chores)',relax:'var(--relax)'};
+const CLBL  = {gym:'GYM',school:'SCHOOL / WGU',chores:'CHORES',relax:'RELAX'};
+const CEMO  = {gym:'💪',school:'📚',chores:'🏠',relax:'🎮'};
+
+const SWATCH_COLORS = ['#e8ff47','#47c8ff','#ff6b35','#b47aff','#ff4d6d','#00e5a0','#ff9f43','#54a0ff','#ff6b9d','#c8d6e5'];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+const KEY = 'weeklyops_android_v2';
+function load() { try { return JSON.parse(localStorage.getItem(KEY))||{}; } catch{return{};} }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch{} }
+
+let S = load();
+
+// Migrate old key if needed
+if (!Object.keys(S).length) {
+  try { const old=JSON.parse(localStorage.getItem('weeklyops_android_v1')); if(old) S=old; } catch{}
+}
+
+// custom cats stored globally
+if (!S._customCats) S._customCats = {}; // {dayId: [{id,label,color,emoji}]}
+
+DAYS.forEach(d => {
+  if (!S[d.id]) S[d.id] = {};
+  if (!S._customCats[d.id]) S._customCats[d.id] = [];
+  BASE_CATS.forEach(cat => {
+    if (!S[d.id][cat]) S[d.id][cat] = {};
+    if (!S[d.id][cat].tasks)
+      S[d.id][cat].tasks = DEFAULTS[d.id][cat].map((t,i)=>({id:`${d.id}-${cat}-${i}`,text:t.text,time:t.time||'',done:false}));
+    if (S[d.id][cat].notes === undefined) S[d.id][cat].notes = '';
+    if (S[d.id][cat].col === undefined)   S[d.id][cat].col   = false;
+  });
+  // init custom cat data
+  S._customCats[d.id].forEach(cc => {
+    if (!S[d.id][cc.id]) S[d.id][cc.id] = {tasks:[], notes:'', col:false};
+  });
+});
+save();
+
+function getCats(dayId) {
+  const custom = (S._customCats[dayId]||[]).map(c=>c.id);
+  return [...BASE_CATS, ...custom];
+}
+function getCatLabel(dayId, cat) {
+  if (BASE_CATS.includes(cat)) return CLBL[cat];
+  const cc = (S._customCats[dayId]||[]).find(c=>c.id===cat);
+  return cc ? cc.label.toUpperCase() : cat.toUpperCase();
+}
+function getCatColor(dayId, cat) {
+  if (BASE_CATS.includes(cat)) return CCOL[cat];
+  const cc = (S._customCats[dayId]||[]).find(c=>c.id===cat);
+  return cc ? cc.color : '#aaa';
+}
+function getCatEmoji(dayId, cat) {
+  if (BASE_CATS.includes(cat)) return CEMO[cat];
+  const cc = (S._customCats[dayId]||[]).find(c=>c.id===cat);
+  return cc ? (cc.emoji||'📌') : '📌';
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────────
+const DMAP = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
+let curDay = DMAP[new Date().getDay()];
+let curCat = 'gym';
+let curPage = 'today';
+
+function dc(id){
+  let d=0,t=0;
+  getCats(id).forEach(c=>{const ts=(S[id][c]||{tasks:[]}).tasks;t+=ts.length;d+=ts.filter(x=>x.done).length;});
+  return{done:d,total:t};
+}
+function cc(id,cat){const ts=(S[id][cat]||{tasks:[]}).tasks;return{done:ts.filter(x=>x.done).length,total:ts.length};}
+
+// ── DATE + TAG ─────────────────────────────────────────────────────────────────
+const now = new Date();
+document.getElementById('hdr-date').textContent = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+const TAGS = ['STRUCTURE IS FREEDOM','PROTECT THE RELAX BLOCK','ONE LIFT. ONE STUDY.','NO BLEED BETWEEN BLOCKS','FORT MEADE 9–5. YOURS AFTER.'];
+document.getElementById('hdr-tag').textContent = TAGS[now.getDay() % TAGS.length];
+
+// ── GLOBAL PROGRESS ────────────────────────────────────────────────────────────
+function updateGlobal(){
+  let d=0,t=0;
+  DAYS.forEach(x=>{const c=dc(x.id);d+=c.done;t+=c.total;});
+  const p=t?Math.round(d/t*100):0;
+  document.getElementById('wb-fill').style.width=p+'%';
+  document.getElementById('wb-pct').textContent=p+'%';
+}
+
+// ── RING ───────────────────────────────────────────────────────────────────────
+function mkRing(done,total,color){
+  const r=16,c=22,circ=2*Math.PI*r,off=circ*(1-(total?done/total:0));
+  return `<svg class="ring-svg" viewBox="0 0 44 44">
+    <circle class="ring-bg" cx="${c}" cy="${c}" r="${r}"/>
+    <circle class="ring-fill" cx="${c}" cy="${c}" r="${r}" stroke="${color}"
+      stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>
+    <text class="ring-txt" x="${c}" y="${c}">${total?Math.round(done/total*100):0}%</text>
+  </svg>`;
+}
+
+// ── CHIPS ──────────────────────────────────────────────────────────────────────
+function renderChips(){
+  const el=document.getElementById('chip-row');
+  el.innerHTML='';
+  DAYS.forEach(d=>{
+    const{done}=dc(d.id);
+    const btn=document.createElement('button');
+    btn.className='chip'+(d.weekend?' weekend':'')+(d.id===curDay?' active':'')+(done>0?' has-prog':'');
+    btn.innerHTML=`<span class="chip-lbl">${d.label}</span><span class="chip-pip"></span>`;
+    btn.onclick=()=>switchDay(d.id);
+    el.appendChild(btn);
+  });
+  setTimeout(()=>{
+    const a=el.querySelector('.active');
+    if(a) a.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  },60);
+}
+
+// ── DAY VIEW ───────────────────────────────────────────────────────────────────
+function renderDV(id){
+  const el=document.getElementById('dv-'+id);
+  if(!el) return;
+  const{done,total}=dc(id);
+  const d=DAYS.find(x=>x.id===id);
+  const rc=d.weekend?'var(--relax)':'var(--gym)';
+
+  let h=`<div class="day-hdr">
+    <div>
+      <div class="day-name">${d.label} <span>${d.sub}</span></div>
+      <div class="day-sub">${done}/${total} complete</div>
+    </div>
+    <div class="day-hdr-r">
+      ${mkRing(done,total,rc)}
+      <button class="reset-btn" onclick="resetDay('${id}')">↺ Reset</button>
+    </div>
+  </div>`;
+
+  getCats(id).forEach(cat=>{
+    if (!S[id][cat]) S[id][cat]={tasks:[],notes:'',col:false};
+    const tasks=S[id][cat].tasks;
+    const{done:cd,total:ct}=cc(id,cat);
+    const pct=ct?cd/ct*100:0;
+    const col=getCatColor(id,cat);
+    const lbl=getCatLabel(id,cat);
+    const collapsed=S[id][cat].col;
+    const isCustom=!BASE_CATS.includes(cat);
+
+    h+=`<div class="sec${collapsed?' col':''}" id="sc-${id}-${cat}">
+      <div class="sec-hdr" onclick="toggleCol('${id}','${cat}')">
+        <div class="sec-dot" style="background:${col}"></div>
+        <span class="sec-lbl" style="color:${col}">${lbl}</span>
+        <div class="sec-mini"><div class="sec-mini-f" style="width:${pct}%;background:${col}"></div></div>
+        <span class="sec-ct">${cd}/${ct}</span>
+        ${isCustom?`<button onclick="event.stopPropagation();deleteCategory('${id}','${cat}')" style="background:transparent;border:none;color:#555;font-size:0.9rem;padding:2px 4px;cursor:pointer;margin-left:2px;">🗑️</button>`:''}
+        <span class="sec-arr">▾</span>
+      </div>
+      <div class="sec-body">`;
+
+    tasks.forEach((t,i)=>{
+      h+=`<div class="task-wrap" id="tw-${t.id}">
+        <div class="task${t.done?' done':''}" 
+          onclick="handleTaskTap(event,'${id}','${cat}',${i})"
+          ontouchstart="swipeStart(event,'${t.id}')"
+          ontouchmove="swipeMove(event,'${t.id}')"
+          ontouchend="swipeEnd(event,'${id}','${cat}',${i},'${t.id}')">
+          <div class="chk">${t.done?'✓':''}</div>
+          <div class="task-body">
+            <div class="task-txt">${t.text}</div>
+            ${t.time?`<div class="task-time">${t.time}</div>`:''}
+          </div>
+        </div>
+        <div class="delete-bg" onclick="deleteTask('${id}','${cat}',${i})">🗑️</div>
+      </div>`;
+    });
+
+    h+=`<div class="add-row">
+      <input class="add-inp" id="ai-${id}-${cat}" placeholder="add task..." />
+      <button class="add-go" onclick="addTask('${id}','${cat}')">ADD</button>
+    </div>`;
+
+    if(cat==='relax'){
+      h+=`<div class="notes-wrap">
+        <div class="notes-lbl">// daily notes</div>
+        <textarea class="notes-ta" placeholder="mood, wins, blockers..."
+          onchange="saveNotes('${id}',this.value)">${S[id][cat].notes||''}</textarea>
+      </div>`;
+    }
+    h+=`</div></div>`;
+  });
+
+  // Add custom category button
+  h+=`<button class="add-cat-btn" onclick="showAddCatModal('${id}')">＋ NEW CATEGORY</button>`;
+
+  el.innerHTML=h;
+  getCats(id).forEach(cat=>{
+    const inp=document.getElementById(`ai-${id}-${cat}`);
+    if(inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTask(id,cat);}});
+  });
+}
+
+// ── CAT PAGE ───────────────────────────────────────────────────────────────────
+function renderCats(){
+  // Use today's cats as the filter list
+  const allCats = getCats(curDay);
+  if (!allCats.includes(curCat)) curCat = allCats[0];
+
+  const pr=document.getElementById('pill-row');
+  pr.innerHTML='';
+  allCats.forEach(cat=>{
+    const p=document.createElement('button');
+    p.className='pill'+(cat===curCat?' active':'');
+    const col=getCatColor(curDay,cat);
+    p.style.color=col; p.style.borderColor=col;
+    p.textContent=getCatEmoji(curDay,cat)+' '+getCatLabel(curDay,cat);
+    p.onclick=()=>{curCat=cat;renderCats();};
+    pr.appendChild(p);
+  });
+  const cl=document.getElementById('cat-list');
+  cl.innerHTML='';
+  DAYS.forEach(d=>{
+    if(!S[d.id][curCat]) return;
+    const tasks=S[d.id][curCat].tasks;
+    if(!tasks.length) return;
+    const lbl=document.createElement('div');
+    lbl.className='wk-day-lbl';
+    lbl.textContent=d.label;
+    cl.appendChild(lbl);
+    tasks.forEach((t,i)=>{
+      const row=document.createElement('div');
+      row.className='task'+(t.done?' done':'');
+      row.style.cssText='border-radius:10px;background:var(--card);border:1px solid var(--border);margin-bottom:6px;';
+      row.innerHTML=`<div class="chk">${t.done?'✓':''}</div>
+        <div class="task-body"><div class="task-txt">${t.text}</div>${t.time?`<div class="task-time">${t.time}</div>`:''}</div>`;
+      row.onclick=()=>{toggleTask(d.id,curCat,i);renderCats();};
+      cl.appendChild(row);
+    });
+  });
+}
+
+// ── STATS PAGE ─────────────────────────────────────────────────────────────────
+function renderStats(){
+  let td=0,tt=0;
+  DAYS.forEach(d=>{const c=dc(d.id);td+=c.done;tt+=c.total;});
+  const pct=tt?Math.round(td/tt*100):0;
+  const todayIdx=DAYS.findIndex(d=>d.id===curDay);
+  let streak=0;
+  for(let i=todayIdx;i>=0;i--){if(dc(DAYS[i].id).done>0)streak++;else break;}
+
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-val" style="color:var(--gym)">${pct}%</div><div class="stat-lbl">Week complete</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--school)">${streak}</div><div class="stat-lbl">Day streak</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--chores)">${td}</div><div class="stat-lbl">Tasks done</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--relax)">${tt-td}</div><div class="stat-lbl">Remaining</div></div>`;
+
+  const dr=document.getElementById('day-stat-rows');
+  dr.innerHTML='';
+  DAYS.forEach(d=>{
+    const{done,total}=dc(d.id);
+    const p=total?done/total*100:0;
+    const col=d.weekend?'var(--relax)':'var(--gym)';
+    dr.innerHTML+=`<div class="day-row">
+      <div class="day-row-n" style="color:${col}">${d.label}</div>
+      <div class="day-bar"><div class="day-bar-f" style="width:${p}%;background:${col}"></div></div>
+      <div class="day-row-n2">${done}/${total}</div>
+    </div>`;
+  });
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────────────────
+function toggleTask(id,cat,idx){
+  S[id][cat].tasks[idx].done=!S[id][cat].tasks[idx].done;
+  save(); renderDV(id); renderChips(); updateGlobal();
+}
+function handleTaskTap(e,id,cat,idx){
+  // only toggle if not mid-swipe
+  if(swipeBlocked) { swipeBlocked=false; return; }
+  toggleTask(id,cat,idx);
+}
+function deleteTask(id,cat,idx){
+  S[id][cat].tasks.splice(idx,1);
+  save(); renderDV(id); renderChips(); updateGlobal();
+  if(curPage==='cats') renderCats();
+  if(curPage==='stats') renderStats();
+}
+function addTask(id,cat){
+  const inp=document.getElementById(`ai-${id}-${cat}`);
+  const text=inp?inp.value.trim():'';
+  if(!text) return;
+  S[id][cat].tasks.push({id:`${id}-${cat}-${Date.now()}`,text,time:'',done:false});
+  save(); renderDV(id); renderChips(); updateGlobal();
+}
+function toggleCol(id,cat){
+  S[id][cat].col=!S[id][cat].col; save();
+  const sc=document.getElementById(`sc-${id}-${cat}`);
+  if(sc) sc.classList.toggle('col');
+}
+function resetDay(id){
+  if(!confirm('Reset all tasks for this day?')) return;
+  getCats(id).forEach(cat=>{ if(S[id][cat]) S[id][cat].tasks.forEach(t=>t.done=false); });
+  save(); renderDV(id); renderChips(); updateGlobal();
+  if(curPage==='stats') renderStats();
+}
+function saveNotes(id,val){ S[id].relax.notes=val; save(); }
+
+function switchDay(id){
+  document.querySelectorAll('.dv').forEach(v=>v.classList.remove('active'));
+  document.getElementById('dv-'+id).classList.add('active');
+  curDay=id; renderChips();
+}
+function goPage(page){
+  curPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+page).classList.add('active');
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nb-'+page).classList.add('active');
+  if(page==='cats') renderCats();
+  if(page==='stats') renderStats();
+}
+
+// ── SWIPE TO DELETE ────────────────────────────────────────────────────────────
+let swipeStartX=0, swipeBlocked=false, activeSwiped=null;
+
+function swipeStart(e,tid){
+  swipeStartX=e.touches[0].clientX;
+  swipeBlocked=false;
+}
+function swipeMove(e,tid){
+  const dx=e.touches[0].clientX-swipeStartX;
+  if(dx<-30){
+    e.preventDefault();
+    swipeBlocked=true;
+    if(activeSwiped && activeSwiped!==tid){
+      const prev=document.getElementById('tw-'+activeSwiped);
+      if(prev) prev.classList.remove('swiped');
+    }
+    const wrap=document.getElementById('tw-'+tid);
+    if(wrap){ wrap.classList.add('swiped'); activeSwiped=tid; }
+  } else if(dx>10){
+    const wrap=document.getElementById('tw-'+tid);
+    if(wrap){ wrap.classList.remove('swiped'); if(activeSwiped===tid) activeSwiped=null; }
+  }
+}
+function swipeEnd(e,id,cat,idx,tid){
+  // close swipe on tap elsewhere
+}
+
+// Close swipe if tapping outside
+document.addEventListener('touchstart',e=>{
+  if(activeSwiped && !e.target.closest(`#tw-${activeSwiped}`)){
+    const wrap=document.getElementById('tw-'+activeSwiped);
+    if(wrap) wrap.classList.remove('swiped');
+    activeSwiped=null;
+  }
+},{passive:true});
+
+// ── CUSTOM CATEGORY MODAL ──────────────────────────────────────────────────────
+let modalDayId=null;
+let selectedColor=SWATCH_COLORS[0];
+
+function showAddCatModal(dayId){
+  modalDayId=dayId;
+  selectedColor=SWATCH_COLORS[0];
+
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='cat-modal';
+  overlay.onclick=e=>{ if(e.target===overlay) closeModal(); };
+
+  const swatches=SWATCH_COLORS.map((c,i)=>
+    `<div class="color-swatch${i===0?' active':''}" style="background:${c}" data-color="${c}" onclick="pickColor(this,'${c}')"></div>`
+  ).join('');
+
+  overlay.innerHTML=`<div class="modal">
+    <div class="modal-title">New Category</div>
+    <input class="modal-inp" id="cat-name-inp" placeholder="Category name (e.g. Meal Prep)" maxlength="24" />
+    <div style="font-family:'Courier Prime',monospace;font-size:0.58rem;color:var(--dimmer);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Pick a color</div>
+    <div class="color-row" id="swatch-row">${swatches}</div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-btn confirm" onclick="confirmAddCat()">CREATE</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.getElementById('cat-name-inp').focus(),200);
+}
+
+function pickColor(el,color){
+  selectedColor=color;
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function closeModal(){
+  const m=document.getElementById('cat-modal');
+  if(m) m.remove();
+}
+
+function confirmAddCat(){
+  const name=(document.getElementById('cat-name-inp').value||'').trim();
+  if(!name){ document.getElementById('cat-name-inp').focus(); return; }
+  const catId='custom_'+Date.now();
+  const catDef={id:catId, label:name, color:selectedColor, emoji:'📌'};
+
+  // Add to all days
+  DAYS.forEach(d=>{
+    S._customCats[d.id].push({...catDef});
+    S[d.id][catId]={tasks:[],notes:'',col:false};
+  });
+  save();
+  closeModal();
+  renderDV(curDay);
+  if(curPage==='cats') renderCats();
+}
+
+function deleteCategory(dayId,catId){
+  if(!confirm('Delete this category and all its tasks?')) return;
+  DAYS.forEach(d=>{
+    S._customCats[d.id]=S._customCats[d.id].filter(c=>c.id!==catId);
+    delete S[d.id][catId];
+  });
+  save();
+  renderDV(curDay);
+  if(curPage==='cats') renderCats();
+  if(curPage==='stats') renderStats();
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+const panelsEl=document.getElementById('day-panels');
+DAYS.forEach(d=>{
+  const div=document.createElement('div');
+  div.className='dv'+(d.id===curDay?' active':'');
+  div.id='dv-'+d.id;
+  panelsEl.appendChild(div);
+  renderDV(d.id);
+});
+renderChips();
+updateGlobal();
+
+// ── SERVICE WORKER ─────────────────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./'})
+      .then(r=>console.log('SW registered'))
+      .catch(e=>console.log('SW failed',e));
+  });
+}
+
+// ── ANDROID INSTALL PROMPT ─────────────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  // Show a subtle install banner after 3 seconds if not already installed
+  setTimeout(()=>{
+    if(deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches){
+      const banner=document.createElement('div');
+      banner.style.cssText='position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #2e2e2e;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:999;max-width:340px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.5);';
+      banner.innerHTML=`<span style="font-size:1.4rem">📲</span>
+        <div style="flex:1">
+          <div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:0.85rem;color:#f0f0f0;letter-spacing:.06em;">ADD TO HOME SCREEN</div>
+          <div style="font-family:\'Courier Prime\',monospace;font-size:0.58rem;color:#777;margin-top:1px;">Install WeeklyOps as an app</div>
+        </div>
+        <button onclick="installApp()" style="background:var(--gym);color:#000;border:none;border-radius:6px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:0.72rem;letter-spacing:.08em;padding:7px 12px;cursor:pointer;">INSTALL</button>
+        <button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:#555;font-size:1rem;cursor:pointer;padding:4px;">✕</button>`;
+      document.body.appendChild(banner);
+      window.installBanner=banner;
+    }
+  },3000);
+});
+
+window.installApp=async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const{outcome}=await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  if(window.installBanner) window.installBanner.remove();
+};
+</script>
+</body>
+</html>
